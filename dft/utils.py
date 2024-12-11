@@ -1,9 +1,6 @@
-# fftfreq()
-# fft2D()
-# ifft2D()
-
-
+# dft/utils.py
 import numpy
+
 
 def freq(n: int, d: float = 1.0) -> numpy.array:
     """Compute the Discrete Fourier Transform frequencies.
@@ -38,14 +35,86 @@ def freq(n: int, d: float = 1.0) -> numpy.array:
     return numpy.concatenate((pos, neg)) * coeff
 
 
-def dft():
+def _dft(input: numpy.ndarray, axis: int = 0, forward: bool = True) -> numpy.ndarray:
+    """
+    Compute the Discrete Fourier Transform (DFT) or its inverse along a specified axis.
+
+    This is a helper function that calculates the DFT or inverse DFT based on the `forward` flag.
+    It uses the matrix multiplication approach to perform the transform.
+
+    Parameters:
+        input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
+        axis (int): The axis along which to compute the DFT. Default is 0.
+        forward (bool): If True, computes the forward DFT. If False, computes the inverse DFT.
+                        Default is True.
+
+    Returns:
+        numpy.ndarray: The transformed array with the same shape as the input.
+
+    """
+    # Move the specified axis to the second-to-last axis and expand a singleton dimension at the end
+    # This is necessary because the @ operator aligns the last axis of the first matrix
+    # with the second-to-last axis of the second matrix during matrix multiplication.
+    f = numpy.moveaxis(input, axis, -1)[..., None]  
+
+    N = f.shape[-2]
+
+    # Construct the DFT matrix
+    # For forward transform: exp(-2j * pi * k * n / N)
+    # For inverse transform: exp(+2j * pi * k * n / N)
+    DFT = numpy.exp(
+        (-1)**forward * 2j * numpy.pi * numpy.arange(N) * numpy.arange(N)[..., None] / N
+    )
+
+    # Perform the matrix multiplication (DFT @ f) and remove the singleton dimension
+    # Restore the original axis order after the computation
+    result = numpy.moveaxis((DFT @ f)[..., -1], -1, axis)
+
+    # Normalize by N for the inverse transform
+    return result if forward else result / N
+
+
+def dft(input: numpy.ndarray, axis: int = 0) -> numpy.ndarray:
+    """
+    Compute the Discrete Fourier Transform (DFT) along a specified axis, which
+    converts data from its original domain to the frequency domain.
+
+    Parameters:
+        input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
+        axis (int): The axis along which to compute the DFT. Default is 0.
+
+    Returns:
+        numpy.ndarray: The transformed array with the same shape as the input.
+    """
+    return _dft(input, axis, True)
+
+
+def idft(input: numpy.ndarray, axis: int = 0) -> numpy.ndarray:
+    """
+    Compute the Inverse Discrete Fourier Transform (IDFT) along a specified axis, which
+    converts data from frequency domain to the origal domain.
+
+    Parameters:
+        input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
+        axis (int): The axis along which to compute the IDFT. Default is 0.
+
+    Returns:
+        numpy.ndarray: The transformed array with the same shape as the input.
+    """
+    return _dft(input, axis, False)
+
+
+def _fft():
     pass
+
 
 def fft():
     pass
 
+
 def ifft():
     pass 
+
 
 def fft2():
     pass 
