@@ -5,4 +5,4 @@ This is our final project for APMA 4300, Intro to Numerical Methods. As a projec
 
 Files:  
 `dft`: we built a fast fourier transform package from scratch.  
-`stable_fluid.ipynb`: the main jupyter notebook contains description of the problems, the stable fluid solver, a simulation, and discussions. 
+`project.ipynb`: the main jupyter notebook contains description of the problems, the stable fluid solver, a simulation, and discussions. 
