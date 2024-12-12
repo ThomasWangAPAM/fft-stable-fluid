@@ -77,12 +77,6 @@ def _dft(input: numpy.ndarray, axis: int, forward: bool) -> numpy.ndarray:
     return result if forward else result / N
 
 
-# pre define DFT matrix for length of 16
-DFT_16 = numpy.exp(-2j * numpy.pi * numpy.arange(16) * numpy.arange(16)[:, None] / 16)
-TWIDDLE_FACTOR={N: numpy.exp(-2j * numpy.pi * numpy.arange(N/2)/ N) for N in numpy.array([1024//32,1024//16,1024//8,1024//4,1024//2,
-                                                                  1024,
-                                                                  1024*2,1024*4,1024*8,1024*16,1024*32,1024*64,1024*128])}
-
 def dft(input: numpy.ndarray, axis: int = -1) -> numpy.ndarray:
     """
     Compute the Discrete Fourier Transform (DFT) along a specified axis, which
@@ -116,6 +110,11 @@ def idft(input: numpy.ndarray, axis: int = -1) -> numpy.ndarray:
     """
     return _dft(input, axis, False)
 
+# pre define DFT matrix for length of 16
+DFT_16 = numpy.exp(-2j * numpy.pi * numpy.arange(16) * numpy.arange(16)[:, None] / 16)
+TWIDDLE_FACTOR={N: numpy.exp(-2j * numpy.pi * numpy.arange(N/2)/ N) for N in numpy.array([1024//32,1024//16,1024//8,1024//4,1024//2,
+                                                                  1024,
+                                                                  1024*2,1024*4,1024*8,1024*16,1024*32,1024*64,1024*128])}
 
 def _fft(input: numpy.ndarray, axis: int, forward: bool) -> numpy.ndarray:
     """
