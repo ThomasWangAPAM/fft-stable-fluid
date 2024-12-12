@@ -1,11 +1,11 @@
 # dft/utils.py
 import numpy
 
-
 def freq(n: int, d: float = 1.0) -> numpy.array:
     """Compute the Discrete Fourier Transform frequencies.
 
-    Args:
+    Parameters:
+    -----------
         n (int): 
             The size of the FFT, which determines the number of frequency bins.
             Must be a positive integer. This corresponds to the number of samples 
@@ -17,11 +17,13 @@ def freq(n: int, d: float = 1.0) -> numpy.array:
             frequency can be interpreted appropriately (e.g. Hz).
             
     Returns:
+    --------
         numpy.array: 
             An array of frequency bins of length `n` that includes both positive and 
             negative frequencies. 
     
     Notes:
+    ------
         - The first element corresponds to the DC component (0 Hz or 0 cycles/unit).
         - The positive frequencies are arranged in increasing order from index 0 to 
           `n//2`.
@@ -43,6 +45,7 @@ def _dft(input: numpy.ndarray, axis: int, forward: bool) -> numpy.ndarray:
     It uses the matrix multiplication approach to perform the transform.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (int): The axis along which to compute the DFT. Default is 0.
         forward (bool): If True, computes the forward DFT. If False, computes the inverse DFT.
@@ -86,10 +89,12 @@ def dft(input: numpy.ndarray, axis: int = -1) -> numpy.ndarray:
     converts data from its original domain to the frequency domain.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (int): The axis along which to compute the DFT. Default is -1.
 
     Returns:
+    --------
         numpy.ndarray: The transformed array with the same shape as the input.
     """
     return _dft(input, axis, True)
@@ -101,10 +106,12 @@ def idft(input: numpy.ndarray, axis: int = -1) -> numpy.ndarray:
     converts data from frequency domain to the origal domain.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (int): The axis along which to compute the IDFT. Default is -1.
 
     Returns:
+    --------
         numpy.ndarray: The transformed array with the same shape as the input.
     """
     return _dft(input, axis, False)
@@ -126,7 +133,6 @@ def _fft(input: numpy.ndarray, axis: int, forward: bool) -> numpy.ndarray:
 
     Returns:
     --------
-    Returns:
         numpy.ndarray: The transformed array with the same shape as the input.
 
     Raises:
@@ -136,26 +142,63 @@ def _fft(input: numpy.ndarray, axis: int, forward: bool) -> numpy.ndarray:
 
     Notes:
     ------
+        - The Cooley-Tukey Algorithm increases computing efficiency by exploiting symmetry of complex number.
+          As an implementation of the original Cooley-Tukey Algorithm, this does means that only input size of
+          power of 2 can be handled.
         - This implementation uses a base case of N_min = 16, below which it switches
           to a direct DFT computation.
         - The algorithm uses precomputed twiddle factors for efficiency.
         - For inverse FFT (forward=False), the output is scaled by 1/N.
+    
+    Main Loop Algorithm Explaination:
+    ---------------------------------
+        The Cooley-Tukey algorithm splits the computation of the DFT of size N
+        into smaller DFTs of even-indexed and odd-indexed elements. This relies on 
+        the following recursive relation:
+        
+            X[k] = DFT_N[k] = F_even[k] + W_N^k * F_odd[k]
+
+            X[k + N/2] = F_even[k] - W_N^k * F_odd[k]
+            
+        Here:
+        - F_even[k] is the DFT of the even-indexed elements of the input.
+        - F_odd[k] is the DFT of the odd-indexed elements of the input.
+        - W_N^k = exp(-2j * pi * k / N) is the twiddle factor for the size-N DFT.
+        
+        This recursion halves the problem size at each step, reducing the overall
+        time complexity from O(N^2) (in naive DFT) to O(N log N).
+        
+        In this implementation:
+        - F_even and F_odd correspond to the blocks in F[..., :F.shape[-1] // 2]
+        and F[..., F.shape[-1] // 2:] respectively.
+        - The twiddle factor is precomputed and applied as `factor_`.
+        - The recursion builds up results by combining the even and odd parts 
+        until the entire DFT of size N is constructed.
+        - A bottom-up iterative approach is chosen over a top-down approach for
+          performance, but the idea is the same.
     """
 
     N_min = 16
     N = input.shape[axis]
     
+    # use bit-wose operator to check for
     if N & (N - 1) != 0:
         raise ValueError("size of input must be a power of 2 for original Cooley–Tukey")
     
+    # if input length is less than 16, just uses normal DFT
     if N <= N_min:
         return _dft(input, axis, forward)
 
+    # move axis of interest to the last position
     f = numpy.moveaxis(input, axis, -1)
     
+    # retrieve correct DFT16 matrix based on whether computation is forward or inverse
     DFT16 = DFT_16 if forward else numpy.conjugate(DFT_16)
+    
+    # transform data in to blocks of length 16 and apply DFT16
     F = DFT16 @ f.reshape((*f.shape[:-1], N_min, -1))
     
+    # reconstruct final results by combining results from problem of smaller size
     while F.shape[-2] < N:
         F_even = F[..., :F.shape[-1] // 2]
         F_odd = F[..., F.shape[-1] // 2:]
@@ -174,10 +217,12 @@ def fft(input: numpy.ndarray, axis: int = -1) -> numpy.ndarray:
     converts data from its original domain to the frequency domain.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (int): The axis along which to compute the FFT. Default is -1.
 
     Returns:
+    --------
         numpy.ndarray: The transformed array with the same shape as the input.
     """
     return _fft(input, axis, True)
@@ -189,10 +234,12 @@ def ifft(input: numpy.ndarray, axis: int = -1) -> numpy.ndarray:
     converts data from frequency domain to the origal domain.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (int): The axis along which to compute the IFFT. Default is -1.
 
     Returns:
+    --------
         numpy.ndarray: The transformed array with the same shape as the input.
     """
     return _fft(input, axis, False)
@@ -204,11 +251,15 @@ def fft2(input: numpy.ndarray, axes: tuple[int] = (-1, -2)):
     converts data from its original domain to the frequency domain.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (tuple[int]): The axes along which to compute the 2D-FFT. Default is (-1, -2).
 
     Returns:
+    --------
         numpy.ndarray: The transformed array with the same shape as the input.
+    
+    
     """
     for a in axes:
         input = _fft(input, a, True)
@@ -221,10 +272,12 @@ def ifft2(input: numpy.ndarray, axes: tuple[int] = (-1, -2)):
     converts data from frequency domain to the origal domain.
 
     Parameters:
+    -----------
         input (numpy.ndarray): The input array to be transformed. Can be multi-dimensional.
         axis (tuple[int]): The axes along which to compute the 2D-IFFT. Default is (-1, -2).
 
     Returns:
+    --------
         numpy.ndarray: The transformed array with the same shape as the input.
     """
     for a in axes:
